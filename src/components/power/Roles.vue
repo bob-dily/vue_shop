@@ -121,7 +121,7 @@ export default {
       }
       this.rolelist = res.data
 
-      console.log(this.rolelist)
+      // console.log(this.rolelist)
     },
     async removeRightById (role, rightId) {
       const result = await this.$confirm('是否确认删除？', '提示', {

@@ -11,7 +11,7 @@
     <el-card>
       <el-row>
         <el-col>
-          <el-button type="primary">添加角色</el-button>
+          <el-button type="primary" @click="addRoleDialogVisible=true">添加角色</el-button>
         </el-col>
       </el-row>
 
@@ -65,8 +65,13 @@
         <el-table-column label="角色描述" prop="roleDesc"></el-table-column>
         <el-table-column label="操作" width="300px">
           <template slot-scope="scope">
-            <el-button size="mini" type="primary" icon="el-icon-edit">编辑</el-button>
-            <el-button size="mini" type="danger" icon="el-icon-delete">删除</el-button>
+            <el-button size="mini" type="primary" icon="el-icon-edit" @click="modifyRole(scope.row)">编辑</el-button>
+            <el-button
+              size="mini"
+              type="danger"
+              icon="el-icon-delete"
+              @click="delRole(scope.row)"
+            >删除</el-button>
             <el-button
               size="mini"
               type="warning"
@@ -78,12 +83,55 @@
       </el-table>
     </el-card>
     <!-- 分配权限的对话框 -->
-    <el-dialog title="分配权限" :visible.sync="setRightDialogVisible" width="50%" @close="setRightDialogClosed">
+    <el-dialog
+      title="分配权限"
+      :visible.sync="setRightDialogVisible"
+      width="50%"
+      @close="setRightDialogClosed"
+    >
       <!-- 树形控件 -->
-      <el-tree :data="rightslist" :props="treeProps"  show-checkbox node-key="id" default-expand-all :default-checked-keys="defKeys" ref="treeRef"></el-tree>
+      <el-tree
+        :data="rightslist"
+        :props="treeProps"
+        show-checkbox
+        node-key="id"
+        default-expand-all
+        :default-checked-keys="defKeys"
+        ref="treeRef"
+      ></el-tree>
       <span slot="footer" class="dialog-footer">
         <el-button @click="setRightDialogVisible = false">取 消</el-button>
         <el-button type="primary" @click="allotRights">确 定</el-button>
+      </span>
+    </el-dialog>
+    <!-- 添加角色对话框 -->
+    <el-dialog title="添加角色" :visible.sync="addRoleDialogVisible" width="50%">
+      <el-form :model="addForm" ref="addFormRef" label-width="70px">
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="addForm.roleName" required></el-input>
+        </el-form-item>
+        <el-form-item label="角色描述" prop="roleDesc">
+          <el-input v-model="addForm.roleDesc"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="addRoleDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitAddRoles">确 定</el-button>
+      </span>
+    </el-dialog>
+    <!-- 编辑角色对话框 -->
+    <el-dialog title="编辑角色" :visible.sync="modifyRoleDialogVisible" width="50%" @close="setClosedModify">
+      <el-form :model="modifyForm" ref="modifyFormRef" label-width="70px">
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="modifyForm.roleName" required></el-input>
+        </el-form-item>
+        <el-form-item label="角色描述" prop="roleDesc">
+          <el-input v-model="modifyForm.roleDesc"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="modifyRoleDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitModify">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -97,6 +145,10 @@ export default {
       rolelist: [],
       // 控制分配权限对话框的显示与隐藏
       setRightDialogVisible: false,
+      // 控制添加角色对话框的显示与隐藏
+      addRoleDialogVisible: false,
+      // 编辑角色对话框
+      modifyRoleDialogVisible: false,
       // 所有权限的数据
       rightslist: [],
       treeProps: {
@@ -106,7 +158,14 @@ export default {
       // 默认选中的节点Id值
       defKeys: [],
       // 当前即将分配权限的角色Id
-      roleId: ''
+      roleId: '',
+      // 添加角色表单数据
+      addForm: {
+        roleName: '',
+        roleDesc: ''
+      },
+      // 编辑角色表单数据
+      modifyForm: {}
     }
   },
   created () {
@@ -121,7 +180,7 @@ export default {
       }
       this.rolelist = res.data
 
-      console.log(this.rolelist)
+      // console.log(this.rolelist)
     },
     async removeRightById (role, rightId) {
       const result = await this.$confirm('是否确认删除？', '提示', {
@@ -181,9 +240,12 @@ export default {
       // console.log('new', keys)
       const idStr = keys.join(',')
 
-      const { data: res } = await this.$http.post(`roles/${this.roleId}/rights`, {
-        rids: idStr
-      })
+      const { data: res } = await this.$http.post(
+        `roles/${this.roleId}/rights`,
+        {
+          rids: idStr
+        }
+      )
 
       if (res.meta.status !== 200) {
         return this.$message.error('分配权限失败！')
@@ -193,6 +255,49 @@ export default {
 
       this.getRoleList()
       this.setRightDialogVisible = false
+    },
+    // 删除角色
+    async delRole (RoleInfo) {
+      // console.log(RoleInfo)
+      const { data: res } = await this.$http.delete(`roles/${RoleInfo.id}`)
+      if (res.meta.status !== 200) {
+        return this.$message.error('删除角色失败！')
+      }
+      this.$message.success('删除角色成功！')
+      this.getRoleList()
+    },
+    // 确认添加角色
+    async submitAddRoles () {
+      // console.log(this.addForm)
+      const { data: res } = await this.$http.post('roles', this.addForm)
+      if (res.meta.status !== 201) {
+        return this.$message.error('添加角色失败!')
+      }
+      this.$message.success('添加角色成功!')
+      this.getRoleList()
+      this.addRoleDialogVisible = false
+      this.addForm = {}
+    },
+    // 编辑角色按钮
+    modifyRole (roleInfo) {
+      this.modifyForm = roleInfo
+      this.modifyRoleDialogVisible = true
+    },
+    // 提交编辑
+    async submitModify () {
+      const { data: res } = await this.$http.put(`roles/${this.modifyForm.id}`, this.modifyForm)
+      if (res.meta.status !== 200) {
+        return this.$message.error('编辑角色失败!')
+      }
+      this.$message.success('编辑角色成功!')
+      this.modifyRoleDialogVisible = false
+      this.modifyForm = {}
+      this.getRoleList()
+    },
+    // 监听编辑角色窗口关闭事件
+    setClosedModify () {
+      this.modifyForm = {}
+      this.getRoleList()
     }
   }
 }

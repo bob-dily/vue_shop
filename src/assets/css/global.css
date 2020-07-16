@@ -24,4 +24,14 @@ body,
 /* 调整Cascader的高度 */
 .el-cascader-panel{
     height: 200px;
-  }
+}
+.el-steps{
+    margin: 15px 0;
+    /* margin-left: 20px; */
+}
+.el-step_title{
+    font-size: 13px;
+}
+.ql-editor{
+    min-height: 300px;
+}
